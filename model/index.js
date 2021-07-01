@@ -1,26 +1,50 @@
 const Contact = require('../schemas/contacts')
 
-const listContacts = async () => {
+const listContacts = async (userId, { limit = 20, page = 1, favorite }) => {
   try {
-    const result = await Contact.find({})
+    const result = await Contact.paginate(
+      { owner: userId },
+      {
+        limit,
+        page,
+        populate: { path: 'owner', select: 'subscription email ' },
+      }
+    )
+    if (favorite) {
+      const findFavorite = await Contact.find({ favorite }).populate({
+        path: 'owner',
+        select: 'subscription email ',
+      })
+      return { docs: findFavorite }
+    }
     return result
   } catch (error) {
     console.log(error)
   }
 }
 
-const getContactById = async (contactId) => {
+const getContactById = async (userId, contactId) => {
   try {
-    const result = await Contact.findById(contactId)
+    const result = await Contact.findOne({
+      _id: contactId,
+      owner: userId,
+    }).populate({
+      path: 'owner',
+      select: 'subscription email ',
+    })
     return result
   } catch (error) {
     console.log(error)
   }
 }
 
-const addContact = async (body) => {
+const addContact = async (userId, body) => {
   try {
-    const record = { ...body, ...(body.favorite ? {} : { favorite: false }) }
+    const record = {
+      ...body,
+      ...(body.favorite ? {} : { favorite: false }),
+      owner: userId,
+    }
     const result = await Contact.create(record)
     return result
   } catch (error) {
@@ -28,10 +52,10 @@ const addContact = async (body) => {
   }
 }
 
-const updateContact = async (contactId, body) => {
+const updateContact = async (userId, contactId, body) => {
   try {
     const result = await Contact.findByIdAndUpdate(
-      contactId,
+      { _id: contactId, owner: userId },
       { ...body },
       { new: true }
     )
@@ -41,16 +65,19 @@ const updateContact = async (contactId, body) => {
   }
 }
 
-const removeContact = async (contactId) => {
+const removeContact = async (userId, contactId) => {
   try {
-    const result = await Contact.findByIdAndRemove(contactId)
+    const result = await Contact.findByIdAndRemove({
+      _id: contactId,
+      owner: userId,
+    })
     return result
   } catch (error) {
     console.log(error)
   }
 }
 
-const updateStatusContact = async (contactId, body) => {
+const updateStatusContact = async (_userId, contactId, body) => {
   try {
     const result = await Contact.findByIdAndUpdate(
       contactId,

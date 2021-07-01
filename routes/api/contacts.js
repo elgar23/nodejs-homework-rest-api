@@ -5,24 +5,32 @@ const {
   validateContact,
   validateFavorite,
 } = require('../../validation/validation')
+const guard = require('../../helpers/guard')
 
-router.get('/', async (req, res, next) => {
+router.get('/', guard, async (req, res, next) => {
   try {
-    const readList = await list.listContacts()
+    const userId = req.user.id
+    const {
+      docs: contacts,
+      totalDocs: total,
+      page,
+      limit,
+    } = await list.listContacts(userId, req.query)
     res.status(200).json({
       status: 'success',
       code: 200,
-      data: readList,
+      data: { contacts, limit, page, total },
     })
   } catch (error) {
     next(error)
   }
 })
 
-router.get('/:contactId', async (req, res, next) => {
+router.get('/:contactId', guard, async (req, res, next) => {
   try {
+    const userId = req.user.id
     const { contactId } = await req.params
-    const getContactId = await list.getContactById(contactId)
+    const getContactId = await list.getContactById(userId, contactId)
     if (getContactId.length !== 0) {
       res.status(200).json({
         status: 'success',
@@ -41,9 +49,10 @@ router.get('/:contactId', async (req, res, next) => {
   }
 })
 
-router.post('/', validateContact, async (req, res, next) => {
+router.post('/', guard, validateContact, async (req, res, next) => {
   try {
-    const listAdd = await list.addContact(req.body)
+    const userId = req.user.id
+    const listAdd = await list.addContact(userId, req.body)
     if (!listAdd) {
       return res.status(400).json({ message: 'missing required name field' })
     }
@@ -57,10 +66,11 @@ router.post('/', validateContact, async (req, res, next) => {
   }
 })
 
-router.delete('/:contactId', async (req, res, next) => {
+router.delete('/:contactId', guard, async (req, res, next) => {
   try {
+    const userId = req.user.id
     const { contactId } = await req.params
-    const deleteContacts = await list.removeContact(contactId)
+    const deleteContacts = await list.removeContact(userId, contactId)
     if (deleteContacts) {
       res.status(200).json({
         status: 'success',
@@ -79,10 +89,11 @@ router.delete('/:contactId', async (req, res, next) => {
   }
 })
 
-router.put('/:contactId', validateContact, async (req, res, next) => {
+router.put('/:contactId', guard, validateContact, async (req, res, next) => {
   try {
+    const userId = req.user.id
     const { contactId } = await req.params
-    const putContacts = await list.updateContact(contactId, req.body)
+    const putContacts = await list.updateContact(userId, contactId, req.body)
     if (!putContacts) {
       return res.status(404).json({ code: 404, message: 'Not found' })
     }
@@ -96,7 +107,7 @@ router.put('/:contactId', validateContact, async (req, res, next) => {
   }
 })
 
-router.patch('/:contactId', validateFavorite, async (req, res, next) => {
+router.patch('/:contactId', guard, validateFavorite, async (req, res, next) => {
   try {
     const { contactId } = await req.params
     const patchContacts = await list.updateStatusContact(contactId, req.body)

@@ -3,6 +3,7 @@ require('dotenv').config()
 const jimp = require('jimp')
 const fs = require('fs/promises')
 const path = require('path')
+const EmailService = require('../Services/email')
 
 const signup = async (req, res, next) => {
   const { email } = await req.body
@@ -16,13 +17,22 @@ const signup = async (req, res, next) => {
   }
   try {
     const newUser = await list.addUsers(req.body)
+    const { id, name, email, avatar, verifyToken } = newUser
+    try {
+      const emailService = new EmailService(process.env.NODE_ENV)
+      await emailService.sendVerifyEmail(verifyToken, email)
+    } catch (error) {
+      console.log(error.message)
+    }
     return res.status(201).json({
       status: 'success',
       code: 201,
       user: {
-        email: newUser.email,
+        id,
+        name,
+        email,
         subscription: 'starter',
-        avatar: newUser.avatar,
+        avatar,
       },
     })
   } catch (error) {
@@ -75,6 +85,7 @@ const current = async (req, res, next) => {
 
     return res.status(200).json({
       status: 'success',
+      name: req.user.name,
       email: req.user.email,
       subscription: 'starter',
       avatar: req.user.avatar,
@@ -116,6 +127,45 @@ const saveAvatarUser = async (req) => {
   }
   return path.join(FOLDER_AVATARS, newNameAvatar).replace('\\', '/')
 }
+
+const verificationToken = async (req, res, next) => {
+  try {
+    const user = await list.getUsersByVerifyTokenEmail(
+      req.params.verificationToken
+    )
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' })
+    }
+    await list.updateTokenVerify(user.id, true, null)
+    return res.status(200).json({
+      message: 'Verification successful',
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+const verification = async (req, res, next) => {
+  try {
+    if (!req.body.email) {
+      return res.status(400).json({ message: 'missing required field email' })
+    }
+    const user = await list.getUsersByEmail(req.body.email)
+    if (user) {
+      const { name, verifyToken, email } = user
+      const emailService = new EmailService(process.env.NODE_ENV)
+      await emailService.sendVerifyEmail(name, verifyToken, email)
+      return res.status(200).json({
+        message: 'Verification email sent',
+      })
+    }
+    return res
+      .status(400)
+      .json({ message: 'Verification has already been passed' })
+  } catch (error) {
+    next(error)
+  }
+}
+
 module.exports = {
   signup,
   login,
@@ -123,4 +173,6 @@ module.exports = {
   current,
   updateAvatar,
   saveAvatarUser,
+  verificationToken,
+  verification,
 }

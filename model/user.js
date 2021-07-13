@@ -21,6 +21,15 @@ const getUsersByEmail = async (email) => {
   }
 }
 
+const getUsersByVerifyTokenEmail = async (token) => {
+  try {
+    const result = await Users.findOne({ verifyToken: token })
+    return result
+  } catch (error) {
+    console.log(error)
+  }
+}
+
 const addUsers = async (body) => {
   try {
     const user = new Users(body)
@@ -63,6 +72,10 @@ const updateAvatar = async (id, avatar) => {
   return data
 }
 
+const updateTokenVerify = async (id, verify, verifyToken) => {
+  return await Users.updateOne({ _id: id }, { verify, verifyToken })
+}
+
 module.exports = {
   getUsersById,
   addUsers,
@@ -72,4 +85,6 @@ module.exports = {
   logout,
   getUsersByToken,
   updateAvatar,
+  updateTokenVerify,
+  getUsersByVerifyTokenEmail,
 }

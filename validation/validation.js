@@ -28,6 +28,15 @@ const schemaUser = Joi.object({
   password: Joi.string().min(6).max(20).required(),
 })
 
+const schemaUserVerify = Joi.object({
+  email: Joi.string()
+    .email({
+      minDomainSegments: 2,
+      tlds: { allow: ['com', 'net'] },
+    })
+    .required(),
+})
+
 const validate = (schema, body, next) => {
   const { error } = schema.validate(body)
   if (error) {
@@ -56,14 +65,36 @@ const validateFav = (schema, body, next) => {
   next()
 }
 
+const validateVerification = (schema, body, next) => {
+  const { error } = schema.validate(body)
+  if (error) {
+    return next({
+      message: {
+        status: 'Bad Request',
+        code: 400,
+        message: 'Email must be valid',
+      },
+    })
+  }
+  next()
+}
+
 const validateContact = (req, res, next) => {
   return validate(schemaContact, req.body, next)
 }
 const validateFavorite = (req, res, next) => {
   return validateFav(schemaFavorite, req.body, next)
 }
+const validateVerify = (req, res, next) => {
+  return validateVerification(schemaUserVerify, req.body, next)
+}
 const validateUser = (req, res, next) => {
   return validate(schemaUser, req.body, next)
 }
 
-module.exports = { validateContact, validateFavorite, validateUser }
+module.exports = {
+  validateContact,
+  validateFavorite,
+  validateUser,
+  validateVerify,
+}
